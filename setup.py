@@ -5,12 +5,12 @@ setup(
     version='0.1.0',
     description=(
         "A library for clustering evaluation based on the "
-        + "concentration of predicted cluster mass across true clusters."
+        + "distribution of predicted cluster mass across true clusters."
     ),
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     author='Randolph Wiredu-Aidoo',
-    author_email='forworkemail914@gmail.com',
+    author_email='randywa2019@gmail.com',
     license='MIT',
     packages=find_packages(),
     install_requires=[

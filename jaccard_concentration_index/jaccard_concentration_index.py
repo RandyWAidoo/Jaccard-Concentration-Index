@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.metrics.cluster import contingency_matrix
 
 def concentration(
-    values: np.ndarray[np.float64], single_index: bool = False, 
+    values: np.ndarray[np.number], single_index: bool = False, 
     size_invariance: bool = True, virtual_length: int = 0 
 )->float:
     """Measure how concentrated the total value of a list of values is within one or a few indexes.
@@ -110,7 +110,8 @@ def concentration(
     return score
 
 def jaccard_concentration_index(
-    y_true: np.ndarray[np.int_], y_pred: np.ndarray[np.int_], 
+    y_true: np.ndarray[np.integer], y_pred: np.ndarray[np.integer], 
+    noise_label: tp.Union[int, None] = None,
     return_all: bool = False, ordered_labels: tp.Sequence[tp.Any] = []
 )->tp.Union[
     float,
@@ -122,7 +123,8 @@ def jaccard_concentration_index(
                 tp.Literal[
                     'score', 
                     'max_jaccard_index', 'concentration',
-                    'closest_label_index', 'closest_label'
+                    'closest_label_index', 'closest_label',
+                    'size_proportion'
                 ],
                 tp.Union[float, int, tp.Any]
             ]]
@@ -137,6 +139,9 @@ def jaccard_concentration_index(
         True cluster labels.
     y_pred : array-like of shape (n_samples,)
         Predicted cluster labels.
+    noise_label : int, optional, default=None
+        A numeric label within y_pred that represents assignment to a noise cluster.
+        All computations will ignore members of the noise cluster.
     return_all : bool, optional, default=False
         Whether to return all global metrics along with all metrics for every cluster or simply the global score.
     ordered_labels : sequence, optional, default=[]
@@ -153,15 +158,18 @@ def jaccard_concentration_index(
     """
 
     # Validate inputs
-    y_true, y_pred = check_array(y_true, ensure_2d=False), check_array(y_pred, ensure_2d=False)
+    y_true, y_pred = (
+        check_array(y_true, ensure_2d=False, dtype=np.int_), 
+        check_array(y_pred, ensure_2d=False, dtype=np.int_)
+    )
     check_consistent_length(y_true, y_pred)
 
     #Setup the contigency table and row and column sums
     contingency_table: np.ndarray[np.int_] = contingency_matrix(y_true, y_pred, dtype=np.int_)
-    row_sums: np.ndarray[np.float64] = np.sum(contingency_table, axis=1, dtype=np.float64) 
-    column_sums: np.ndarray[np.float64] = np.sum(contingency_table, axis=0, dtype=np.float64)
+    row_sums: np.ndarray[np.int_] = np.sum(contingency_table, axis=1, dtype=np.int_) 
+    column_sums: np.ndarray[np.int_] = np.sum(contingency_table, axis=0, dtype=np.int_)
 
-    #If we are returning all and ordered labels were provided, ensure they are the right length
+    #If we are returning-all and ordered labels were provided, ensure they are the right length
     if return_all and len(ordered_labels):
         if len(ordered_labels) != contingency_table.shape[0]:
             raise ValueError("Length of ordered_labels must equal the number of true clusters.")
@@ -169,22 +177,38 @@ def jaccard_concentration_index(
     #For each predicted cluster, calculate the max jaccard index between it and every true cluster.
     # Additionally compute the (non-single-index)concentration of its mass across the true clusters 
     # and use the 2 metrics to compute the final score the cluster.
+    noise_idx: int = ( #The (potentially) new column index of the noise cluster within the contingency table
+        -1 #Out of reach index that will never be iterated to
+        if noise_label is None or noise_label not in y_pred 
+        else int(np.searchsorted(np.unique(y_pred), noise_label)) 
+    )
+    noiseless_size: int = len(y_true)
+    if noise_idx > -1:
+        noiseless_size -= column_sums[noise_idx]
+        if noiseless_size == 0: #Raise an error if all points are noise to avoid divide-by-zero errors
+            raise ValueError("Must have at least 1 non-noise datapoint")
+    
     i: int
     j: int
     pred_cluster_results: list[dict[
         tp.Literal[
             'score', 
             'max_jaccard_index', 'concentration',
-            'closest_label_index', 'closest_label'
+            'closest_label_index', 'closest_label',
+            'size_proportion'
         ],
         tp.Union[float, int, tp.Any]
     ]] = []
     for j in range(contingency_table.shape[1]):
+        #Skip the noise cluster
+        if j == noise_idx:
+            continue
+
         #Setup result variables
         max_jaccard_index: np.float64 = np.float64(-1.0)
-        jaccard_idxs_with_true_clusters: np.ndarray[np.float64] = np.array([
-            0.0 for _ in range(contingency_table.shape[0])
-        ], dtype=np.float64)
+        jaccard_idxs_with_true_clusters: np.ndarray[np.float64] = np.zeros(
+            contingency_table.shape[0], dtype=np.float64
+        )
         closest_label_idx: int = -1
         closest_label: tp.Any = None
         
@@ -209,31 +233,28 @@ def jaccard_concentration_index(
         jci: float = float(np.sqrt(max_jaccard_index*c))
 
         #Save the cluster's results for later
+        size_proportion: float = float(column_sums[j]/noiseless_size)
         pred_cluster_results.append({
             "score": jci,
             "max_jaccard_index": float(max_jaccard_index), 
             "concentration": c, 
             "closest_label_index": closest_label_idx,
-            "closest_label": closest_label
+            "closest_label": closest_label,
+            "size_proportion": size_proportion
         })
     
     #Calculate the macroaverage JCI as the macroavg of all clusters' various scores, 
     # with each cluster's weighting determined by its proportion in the dataset
-    macroavg_jci = sum([
-        float(pred_cluster_results[j]['score']*column_sums[j]/len(y_true))
-        for j in range(contingency_table.shape[1])
-    ])
+    macroavg_jci = sum([result['score']*result['size_proportion'] for result in pred_cluster_results])
 
     #Return results
     if return_all:
         #Calculate macroaverages of MJI and Concentration in the same manner as the JCI
         macroavg_mji = sum([
-            float(pred_cluster_results[j]['max_jaccard_index']*column_sums[j]/len(y_true))
-            for j in range(contingency_table.shape[1])
+            result['max_jaccard_index']*result['size_proportion'] for result in pred_cluster_results
         ])
         macroavg_c = sum([
-            float(pred_cluster_results[j]['concentration']*column_sums[j]/len(y_true))
-            for j in range(contingency_table.shape[1])
+            result['concentration']*result['size_proportion'] for result in pred_cluster_results
         ])
         
         #Return them along with results for each cluster

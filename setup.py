@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='jaccard_concentration_index',
-    version='0.1.0',
+    name='jaccard-concentration-index',
+    version='1.0.0',
     description=(
         "A library for clustering evaluation based on the "
         + "distribution of predicted cluster mass across true clusters."
@@ -10,9 +10,10 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     author='Randolph Wiredu-Aidoo',
-    author_email='randywa2019@gmail.com',
+    author_email='forworkemail914@gmail.com',
     license='MIT',
-    packages=find_packages(),
+    url="https://github.com/RandyWAidoo/Jaccard-Concentration-Index",
+    packages=find_packages(include=['jaccard_concentration_index']),
     install_requires=[
         'numpy>=1.21.0',
         'scikit-learn>=0.24.0'

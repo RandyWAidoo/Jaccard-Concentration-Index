@@ -1,2 +1,5 @@
 .venv/
 __pycache__/
+experiments.py
+*egg-info/
+dist/

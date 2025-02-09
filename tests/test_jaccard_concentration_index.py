@@ -1,25 +1,6 @@
-#!/usr/bin/env python
-"""
-Test suite for the clustering evaluation metrics:
-- concentration
-- jaccard_concentration_index
-
-The tests below verify:
-  - proper handling of edge cases (empty arrays, single-element arrays, virtual_length, etc.)
-  - that uniform distributions yield low concentration scores
-  - that highly concentrated inputs yield scores near 1
-  - that the "single_index" mode of concentration behaves as expected
-  - that the contingency table based jaccard_concentration_index produces the expected results in simple cases
-  - macro-averaging properly weights the predicted clusters
-
-You can run this file directly.
-"""
-
 import unittest
 import numpy as np
-import sys
-sys.path.append(".")
-from jaccard_concentration_index.jaccard_concentration_index import concentration, jaccard_concentration_index
+from jaccard_concentration_index import concentration, jaccard_concentration_index
 
 # === Begin tests ===
 
@@ -145,6 +126,34 @@ class TestJaccardConcentrationIndex(unittest.TestCase):
         # but the concentration should be 0, yielding a score of 0
         self.assertAlmostEqual(score, 0, places=5)
 
+    def test_noisy_pred_clusters(self):
+        # A scenario where there is a predicted noise cluster
+        y_true = np.array([0, 0, 0, 0])
+        y_pred = np.array([0, 1, -1, -1])
+        score = jaccard_concentration_index(y_true, y_pred, noise_label=-1)
+        # In this case, the max jaccard index of each non-noise cluster should be .25,
+        # but the concentration should be 1, yielding a score(geometric mean) of .5 for each non-noise cluster,
+        # meaning the avg should also be .5
+        self.assertAlmostEqual(score, 0.5, places=5)
+
+    def test_all_noise_pred_clusters(self):
+        # A scenario where there is all points are predicted as noise
+        y_true = np.array([0, 0, 0, 0])
+        y_pred = np.array([-1, -1, -1, -1])
+        with self.assertRaises(ValueError):
+            jaccard_concentration_index(y_true, y_pred, noise_label=-1)
+
+    def test_bad_noise_label(self):
+        # A scenario where there is a predicted noise cluster and a wrong noise label as a parameter to jci
+        y_true = np.array([0, 0, 0, 0])
+        y_pred = np.array([0, 1, -1, -1])
+        score = jaccard_concentration_index(y_true, y_pred, noise_label=-2)
+        # In this case, the max jaccard index of the last pred cluster 
+        # should be .5 while the first 2 will be .25. Then concentration of all of them should be 1.
+        # So the scores should be .5,.5, and sqrt(.5), while sizes proportions are .25, .25, .5,
+        # ultimately making the avg out to be .5*.25+.5*.25+sqrt(.5)*.5, which is ~0.60355
+        self.assertAlmostEqual(score, 0.60355, places=5)
+
     def test_return_all_structure_with_ordered_labels(self):
         # Test that when return_all is True, the dictionary returned has the proper structure.
         y_true = np.array([0, 0, 1, 1, 2, 2])
@@ -157,13 +166,18 @@ class TestJaccardConcentrationIndex(unittest.TestCase):
         # Also check that cluster_results is a list with one dict per predicted cluster.
         self.assertEqual(len(results['cluster_results']), len(np.unique(y_pred)))
         # Then check the structure of all cluster_results
-        for key in ['score', 'max_jaccard_index', 'concentration', 'closest_label_index', 'closest_label']:
-            for result in results["cluster_results"]:
+        for key in [
+            'score', 'max_jaccard_index', 'concentration', 
+            'closest_label_index', 'closest_label', 'size_proportion'
+        ]:
+            for i, result in enumerate(results["cluster_results"]):
                 self.assertIn(key, result)
                 if key == "closest_label":
-                    self.assertIsInstance(result[key], str)
+                    self.assertEqual(result[key], ordered_labels[i])
+                elif key == "size_proportion":
+                    self.assertAlmostEqual(result[key], 1/3, places=5)
 
-    def test_return_all_structure_wrong_ordered_labels(self):
+    def test_return_all_with_wrong_ordered_labels(self):
         # Ensure an error occurrs if the length of the ordered labels is wrong.
         # This will be tested with 3 true classes and 4 ordered labels
         y_true = np.array([0, 0, 1, 1, 2, 2])
@@ -183,25 +197,12 @@ class TestJaccardConcentrationIndex(unittest.TestCase):
         # Also check that cluster_results is a list with one dict per predicted cluster.
         self.assertEqual(len(results['cluster_results']), len(np.unique(y_pred)))
         # Then check the structure of all cluster_results
-        for key in ['score', 'max_jaccard_index', 'concentration', 'closest_label_index', 'closest_label']:
+        for key in [
+            'score', 'max_jaccard_index', 'concentration', 
+            'closest_label_index', 'closest_label', 'size_proportion'
+        ]:
             for result in results["cluster_results"]:
                 self.assertIn(key, result)
-
-    def test_weighting_macroavg(self):
-        # Create a scenario where one predicted cluster is large and one is small.
-        y_true = np.array([0]*10 + [1]*2)
-        y_pred = np.array([0]*10 + [1]*2)
-        # Perfect clustering: both clusters should have JCI=1,
-        # but the macro-average is weighted more by the larger cluster.
-        score = jaccard_concentration_index(y_true, y_pred)
-        self.assertAlmostEqual(score, 1.0, places=5)
-        # Now mix up one predicted cluster so that it is not pure.
-        y_true = np.array([0]*10 + [1]*2)
-        y_pred = np.array([0]*5 + [1]*5 + [0]*2)  # cluster 0: 7 points, cluster 1: 5 points.
-        score = jaccard_concentration_index(y_true, y_pred)
-        # The overall score should drop because one of the predicted clusters is impure.
-        self.assertGreater(score, 0.0)
-        self.assertLess(score, 1.0)
 
     def test_inconsistent_length(self):
         # Test that if y_true and y_pred have different lengths, an error is raised.

@@ -141,7 +141,7 @@ def jaccard_concentration_index(
         Predicted cluster labels.
     noise_label : int, optional, default=None
         A numeric label within y_pred that represents assignment to a noise cluster.
-        All computations will ignore members of the noise cluster.
+        Scores won't be computed for the noise cluster, but true-cluster mass that is placed into it will count against the final score.
     return_all : bool, optional, default=False
         Whether to return all global metrics along with all metrics for every cluster or simply the global score.
     ordered_labels : sequence, optional, default=[]

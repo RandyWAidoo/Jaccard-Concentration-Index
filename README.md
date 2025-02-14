@@ -66,7 +66,8 @@ This function computes the Jaccard-Concentration Index for clustering evaluation
 
 - **`noise_label`**: `int`, optional, (default=`None`)  
   A numeric label within `y_pred` that represents assignment to a noise cluster.
-  All computations will ignore members of the noise cluster.
+  Scores for the noise cluster will not be computed and will not affect the final averages directly.
+  However, the mass of the true clusters that is deposited in the noise cluster will count against the final score.
 
 - **`return_all`**: `bool`, optional (default=`False`)  
   If `True`, the function returns all global metrics along with detailed metrics for each cluster. If `False`, only the global JCI score is returned.
@@ -125,7 +126,7 @@ This function computes the Jaccard-Concentration Index for clustering evaluation
 
 ## Installation
 
-You can install the library using pip:
+You can install the library using pip: 
 
 ```bash
 pip install jaccard-concentration-index

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='jaccard-concentration-index',
-    version='1.0.0',
+    version='1.0.2',
     description=(
         "A library for clustering evaluation based on the "
         + "distribution of predicted cluster mass across true clusters."

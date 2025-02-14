@@ -125,7 +125,7 @@ This function computes the Jaccard-Concentration Index for clustering evaluation
 
 ## Installation
 
-You can install the library using pip:
+You can install the library using pip: 
 
 ```bash
 pip install jaccard-concentration-index

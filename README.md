@@ -46,9 +46,9 @@ This function calculates how concentrated the total value of a list of numbers i
 
 ```python
 jaccard_concentration_index(
-    y_true: np.ndarray[np.int_],
-    y_pred: np.ndarray[np.int_],
-    noise_label: Union[int, None] = None,
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    noise_label: Union[Any, None] = None,
     return_all: bool = False,
     ordered_labels: Sequence[Any] = []
 ) -> Union[float, dict]
@@ -58,14 +58,14 @@ jaccard_concentration_index(
 This function computes the Jaccard-Concentration Index for clustering evaluation. It assesses how well the predicted cluster assignments match the true cluster labels by combining the Jaccard index (to measure overlap) with the concentration score (to measure the focus of that overlap).
 
 #### Parameters:
-- **`y_true`**: `np.ndarray[np.int_]` (array-like of shape `(n_samples,)`)  
+- **`y_true`**: `np.ndarray` (array-like of shape `(n_samples,)`)  
   The true cluster labels.
 
-- **`y_pred`**: `np.ndarray[np.int_]` (array-like of shape `(n_samples,)`)  
+- **`y_pred`**: `np.ndarray` (array-like of shape `(n_samples,)`)  
   The predicted cluster labels.
 
-- **`noise_label`**: `int`, optional, (default=`None`)  
-  A numeric label within `y_pred` that represents assignment to a noise cluster.
+- **`noise_label`**: `Any`, optional, (default=`None`)  
+  A label within `y_pred` that represents assignment to a noise cluster.
   Scores for the noise cluster will not be computed and will not affect the final averages directly.
   However, the mass of the true clusters that is deposited in the noise cluster will count against the final score.
 

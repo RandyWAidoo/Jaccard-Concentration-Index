@@ -98,6 +98,14 @@ class TestJaccardConcentrationIndex(unittest.TestCase):
         # In a perfect clustering, the macro-average JCI should be 1.
         self.assertAlmostEqual(score, 1.0, places=5)
 
+    def test_non_integer_clustering(self):
+        # Test results for non-integer labels
+        y_true = np.array(['a', 'a', 'b', 'b'])
+        y_pred = np.array(['a', 'a', 'b', 'b'])
+        score = jaccard_concentration_index(y_true, y_pred)
+        # In a perfect clustering, the macro-average JCI should be 1.
+        self.assertAlmostEqual(score, 1.0, places=5)
+
     def test_complete_misclassification(self):
         # A scenario where predicted clusters are perfectly spread out across true clusters.
         y_true = np.array([0, 0, 1, 1])

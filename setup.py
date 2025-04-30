@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='jaccard-concentration-index',
-    version='1.0.2',
+    version='1.0.4',
     description=(
         "A library for clustering evaluation based on the "
         + "distribution of predicted cluster mass across true clusters."
@@ -10,7 +10,7 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     author='Randolph Wiredu-Aidoo',
-    author_email='forworkemail914@gmail.com',
+    author_email='randyaidoo.dev@gmail.com',
     license='MIT',
     url="https://github.com/RandyWAidoo/Jaccard-Concentration-Index",
     packages=find_packages(include=['jaccard_concentration_index']),
